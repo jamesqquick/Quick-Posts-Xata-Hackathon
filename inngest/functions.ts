@@ -1,58 +1,50 @@
-import { inngest } from "./client";
-import OpenAI from "openai";
+import { Resend } from 'resend';
+import { inngest } from './client';
+import { TweetTemplate } from '@/app/components/TweetTemplate';
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-
-// Functions exported from this file are exposed to Inngest
-// See: @/app/api/inngest/route.ts
-
-export const messageSent = inngest.createFunction(
-  { id: "message-sent" }, // Each function should have a unique ID
-  { event: "app/message.sent" }, // When an event by this name received, this function will run
+export const sendEmailFunction = inngest.createFunction(
+  { id: 'email-post' },
+  { cron: '0 10 * * *' },
 
   async ({ event, step, prisma }) => {
     // Fetch data from the database
-    const message = await prisma.messages.findUnique({
+    const tweet = await prisma.tweet.findFirst({
       where: {
-        xata_id: event.data.messageId,
+        approved: true,
+        sent: false,
       },
     });
 
-    if (!message) {
-      return;
+    if (!tweet) {
+      return { event, body: 'No tweets to send!' };
     }
 
-    // You can execute code that interacts with external services
-    // All code is retried automatically on failure
-    // Read more about Inngest steps: https://www.inngest.com/docs/learn/inngest-steps
-    const reply = await step.run("create-reply", async () => {
-      if (OPENAI_API_KEY) {
-        const openai = new OpenAI();
-        const completion = await openai.chat.completions.create({
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are a helpful assistant. Create a funny reply to my message:",
-            },
-            { role: "user", content: message?.text },
-          ],
-          model: "gpt-3.5-turbo",
-        });
-        return (
-          completion.choices[0]?.message.content ?? "Unexpected OpenAI response"
-        );
-      } else {
-        return "Add OPENAI_API_KEY environment variable to get AI responses.";
-      }
+    //TODO get user email and name
+    //send email
+    const resend = new Resend(process.env.RESEND_API_KEY);
+
+    const { data, error } = await resend.emails.send({
+      from: 'Acme <onboarding@resend.dev>',
+      to: ['delivered@resend.dev'],
+      subject: 'hello world',
+      text: 'it works!',
+      react: TweetTemplate({ firstName: 'John', tweet: tweet.content }),
     });
 
-    const newMessage = await step.run("add-reply-to-message", async () => {
-      return await prisma.messages.create({
-        data: { text: reply, author: "AI" },
-      });
-    });
+    if (error) {
+      console.error(error);
+      return { event, body: 'Failed to send email!' };
+    }
 
-    return { event, body: `Here's your last message: ${newMessage?.text}!` };
+    //update tweet to be marked as sent
+    // await prisma.tweet.update({
+    //   where: {
+    //     xata_id: tweet.xata_id,
+    //   },
+    //   data: {
+    //     sent: true,
+    //   },
+    // });
+    return { event, body: 'Twitter post sent by email!' };
   }
 );
