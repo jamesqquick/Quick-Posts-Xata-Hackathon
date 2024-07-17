@@ -23,6 +23,8 @@ model Tweet {
     type String
     approved Boolean? @default(false)
     sent Boolean? @default(false)
+    user_email String
+    user_name String
     // xata fields
     xata_updatedat DateTime @default(now()) @db.Timestamptz(6)
     xata_id        String   @unique(map: "_pgroll_users_xata_id_key") @default(dbgenerated("('rec_'::text || (xata_private.xid())::text)"))

@@ -1,5 +1,5 @@
 'use server';
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { ActionReturnVal } from '../types';
 import { z } from 'zod';
 import { redirect } from 'next/navigation';
@@ -12,14 +12,19 @@ export async function generateSocialPostsAction(
   message: string
 ): Promise<ActionReturnVal> {
   const { userId } = auth().protect();
+  const user = await currentUser();
 
-  if (!userId) {
+  const name = user?.firstName;
+  const email = user?.emailAddresses[0].emailAddress;
+  if (!userId || !user || !name || !email) {
     redirect('/');
   }
   try {
     const tweets = await generateSocialPosts(message);
     tweets.forEach((tweet) => {
       tweet.user_id = userId;
+      tweet.user_name = name;
+      tweet.user_email = email;
     });
     console.log(tweets);
     //save tweets
