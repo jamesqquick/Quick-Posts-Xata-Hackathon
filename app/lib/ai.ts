@@ -1,6 +1,7 @@
+import { Tweet } from '@prisma/client';
 import OpenAI from 'openai';
 
-export const generateSocialPosts = async (topic: string) => {
+export const generateSocialPosts = async (topic: string): Promise<Tweet[]> => {
   const openai = new OpenAI();
   const completion = await openai.chat.completions.create({
     messages: [
