@@ -1,5 +1,5 @@
-import { messageSent } from "./functions";
+import { sendEmailFunction } from './functions';
 
-export const functions = [messageSent];
+export const functions = [sendEmailFunction];
 
-export { inngest } from "./client";
+export { inngest } from './client';
